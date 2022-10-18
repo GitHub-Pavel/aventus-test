@@ -62,9 +62,12 @@ if ( 'page' == get_option( 'show_on_front' ) ) {
 									<?php if ( count($re_types) ) { ?>
 										<nav class="nav">
 											<?php foreach( $re_types as $re_type ) { ?>
+												<?php
+													$url = http_build_query(array_merge($_GET, array('re_type' => $re_type->term_id)));
+												?>
 												<a 
 													class="nav-link" 
-													href="<?php echo esc_url('?re_type='.$re_type->term_id); ?>"
+													href="<?php echo esc_url('?'.$url); ?>"
 												>
 													<?php echo esc_html($re_type->name); ?>
 												</a>
