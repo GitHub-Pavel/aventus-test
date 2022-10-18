@@ -8,7 +8,6 @@ if ( 'page' == get_option( 'show_on_front' ) ) {
 		'order' => 'ASC' 
 	);
 
-
 	if ( isset($_GET['re_type']) && $_GET['re_type'] !== '' ) {
 		$args['tax_query'] = array(
 			array(
@@ -19,15 +18,19 @@ if ( 'page' == get_option( 'show_on_front' ) ) {
 		);
 	}
 
-	$posts = count( $_GET ) ? new WP_Query($args) : unity_child_get_transient_posts( $post_type, false, $args );
+	if ( isset($_GET['agency']) && $_GET['agency'] !== '' ) {
+		$args['post_parent'] = $_GET['agency'];
+	}
 
+	$posts = count( $_GET ) ? new WP_Query($args) : unity_child_get_transient_posts( $post_type, false, $args );
+	
 	get_header(); ?>
 
 	<div id="primary" class="content-area col-sm-12 col-md-12">
 		<main id="main" class="site-main" role="main">
 			<div class="row">
 				<div class="col-12 col-md-9">
-					<?php if( count( $posts->posts ) ) { ?>
+					<?php if( isset( $posts->posts ) && count( $posts->posts ) ) { ?>
 						<?php foreach( $posts->posts as $key => $post ) { ?>
 
 							<?php 

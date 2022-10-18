@@ -92,7 +92,7 @@ if( function_exists('acf_add_local_field_group') ) {
 }
 
 add_action('add_meta_boxes', function () {
-	add_meta_box( 'agency', __('Real estate agency'), 'agency_metabox', 'real_estate', 'side', 'low'  );
+	add_meta_box( 'agency', __('Real estate agency', CHILD_TEXT_DOMAIN), 'agency_metabox', 'real_estate', 'side', 'low'  );
 }, 1);
 
 function agency_metabox( $post ){
@@ -106,17 +106,17 @@ function agency_metabox( $post ){
 
 		foreach( $agencies as $agency ){
 			echo '
-			<li>
-                <label>
-                    <input 
-                        type="radio" 
-                        name="post_parent" 
-                        value="'. $agency->ID .'" '. 
-                        checked($agency->ID, $post->post_parent, 0) .
-                    '>'. 
-                    esc_html($agency->post_title) .
-                '</label>
-            </li>
+				<li>
+					<label>
+							<input 
+									type="radio" 
+									name="post_parent" 
+									value="'. $agency->ID .'" '. 
+									checked($agency->ID, $post->post_parent, 0) .
+							'>'. 
+							esc_html($agency->post_title) .
+					'</label>
+				</li>
 			';
 		}
 
@@ -129,8 +129,14 @@ function agency_metabox( $post ){
 }
 
 add_action( 'save_post', 'unity_child_save_cache_post', 10, 3 );
-function unity_child_save_cache_post( $post_ID, $post, $update ){
+function unity_child_save_cache_post( $post_id, $post, $update ){
     $post_types = ['agency_type'];
+
+    if ( defined('DOING_AUTOSAVE') && DOING_AUTOSAVE ) 
+        return;
+
+    if( ! current_user_can( 'edit_post', $post_id ) )
+        return;
 
     foreach( $post_types as $post_type ) {
         if($post->post_type === $post_type) {
@@ -138,8 +144,17 @@ function unity_child_save_cache_post( $post_ID, $post, $update ){
             set_transient( 'admin_'.$post_type, $posts, DAY_IN_SECONDS );
         }
     }
+
+    if ( ! isset( $_POST['post_parent'] ) ) {
+        $data = sanitize_text_field( $_POST['post_parent'] );
+        update_post_meta( $post_id, 'agency', $data );
+    }
 }
 
+add_action( 'widgets_init', 'unity_child_widget_agencies' );
+function unity_child_widget_agencies() {
+	register_widget( 'Unity_Child_Widget_Agencies' );
+}
 
 
 function unity_child_get_transient_posts($post_type, $is_admin = false, $args = false, $time = DAY_IN_SECONDS ) {
@@ -154,7 +169,7 @@ function unity_child_get_transient_posts($post_type, $is_admin = false, $args = 
     
     if ($posts === false) {
 	    $posts = new WP_Query($posts_args);
-        set_transient( $transient_name, $posts, $time );
+			set_transient( $transient_name, $posts, $time );
     }
 
     return $posts;
@@ -170,4 +185,44 @@ function unity_child_get_transient_field( $field_name, $post_id, $time = HOUR_IN
     }
 
     return $value;
+}
+
+// Класс виджета
+class Unity_Child_Widget_Agencies extends WP_Widget {
+
+	function __construct() {
+		parent::__construct(
+			'unity_child_widget_agencies_parent',
+			__('Agencies', CHILD_TEXT_DOMAIN),
+			array('description' => __('Output agencies to front page', CHILD_TEXT_DOMAIN))
+		);
+	}
+
+	function widget( $args, $instance ){
+		$posts = unity_child_get_transient_posts('agency_type');
+
+		echo $args['before_widget'];
+
+		if( count($posts->posts) ) {
+			?>
+				<ul>
+					<?php foreach($posts->posts as $post) { ?>
+						<?php 
+							$url = http_build_query(array_merge($_GET, array('agency' => $post->ID)));
+						?>
+
+						<li>
+							<a href="<?php echo esc_url('?'.$url); ?>"><?php echo esc_html($post->post_title); ?></a>
+						</li>
+					<?php } ?>
+				</ul>
+			<?php
+		} else {
+			?>
+				<p><?php echo __('Agencies not found...', CHILD_TEXT_DOMAIN); ?></p>
+			<?php
+		}
+
+		echo $args['after_widget'];
+	}
 }
